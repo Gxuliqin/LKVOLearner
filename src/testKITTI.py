@@ -14,7 +14,8 @@ CUDA_VISIBLE_DEVICES=1 nice -10 python3 testKITTI.py --dataset_root /newfoundlan
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--dataset_root", type=str, default="/newfoundland/chaoyang/kitti", help="dataset root path")
-parser.add_argument("--test_file_list", type=str, default="/newfoundland/chaoyang/SfMLearner/data/kitti/test_files_eigen.txt", help="test file list")
+parser.add_argument("--test_file_list", type=str,
+                    default="/newfoundland/chaoyang/SfMLearner/data/kitti/test_files_eigen.txt", help="test file list")
 parser.add_argument("--ckpt_file", type=str, default=None, help="checkpoint file")
 parser.add_argument("--output_path", type=str, default="pred_depths", help="output path")
 parser.add_argument("--use_pp", default=False, action="store_true", help='use post processing')
@@ -36,12 +37,14 @@ vgg_depth_net.cuda()
 
 fliplr = FlipLR(imW=img_size[1], dim_w=2).cuda()
 
+
 def read_text_lines(file_path):
     f = open(file_path, 'r')
     lines = f.readlines()
     f.close()
     lines = [l.rstrip() for l in lines]
     return lines
+
 
 test_files = read_text_lines(test_file_list)
 pred_depths = []
@@ -59,27 +62,27 @@ for filename in test_files:
     print(filename)
     img_var = Variable(torch.from_numpy(img).float().cuda(), volatile=True)
 
-
     if FLAGS.use_pp:
         # flip image
-        img_vars = (torch.cat((fliplr(img_var).unsqueeze(0), img_var.unsqueeze(0)), 0)-127)/127
+        img_vars = (torch.cat((fliplr(img_var).unsqueeze(0), img_var.unsqueeze(0)), 0) - 127) / 127
         pred_depth_pyramid = vgg_depth_net.forward(img_vars)
         depth = pred_depth_pyramid[0]
         print(depth.size())
-        depth_mean = (fliplr(depth[0:1, :, :]) + depth[1:2, :, :])*.5
+        depth_mean = (fliplr(depth[0:1, :, :]) + depth[1:2, :, :]) * .5
         pred_depths.append(depth_mean.data.cpu().squeeze().numpy())
         # compute mean
     else:
-        pred_depth_pyramid = vgg_depth_net.forward((img_var.unsqueeze(0)-127)/127)
+        pred_depth_pyramid = vgg_depth_net.forward((img_var.unsqueeze(0) - 127) / 127)
         pred_depths.append(pred_depth_pyramid[0].data.cpu().squeeze().numpy())
-    i = i+1
+    i = i + 1
     # if i==3:
     #     break
 pred_depths = np.asarray(pred_depths)
 print(pred_depths.shape)
-np.save(output_path, 1/pred_depths)
+np.save(output_path, 1 / pred_depths)
 import scipy.io as sio
+
 sio.savemat(output_path, {'D': pred_depths})
-    # print(pred_depth_pyramid[0].size())
-    # plt.imshow(pred_depth_pyramid[0].data.cpu().squeeze().numpy())
-    # plt.show()
+# print(pred_depth_pyramid[0].size())
+# plt.imshow(pred_depth_pyramid[0].data.cpu().squeeze().numpy())
+# plt.show()
